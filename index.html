@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Ultimate Tracker</title>
+    <link rel="icon" href="https://cdn.mos.cms.futurecdn.net/9meMCxtJU3NWkh5YcPs7qG.jpg" type="image/x-icon">
+
 
     <style>
         * {
@@ -120,7 +122,6 @@
     <button onclick="addTask()">Add</button>
     <button onclick="toggleFullHistory()">📅 Full History</button>
     <div id="fullHistory"></div>
-
     <div id="tasks"></div>
 
     <script>
@@ -367,7 +368,7 @@
 
       <div id="detail-${date}" class="dayDetails"></div>
     `;
-    
+
                 box.innerHTML += row;
             });
         }
