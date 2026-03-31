@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Tracker</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI';
+            background: linear-gradient(90deg, rgb(10, 10, 91), rgb(2, 2, 34));
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 20px;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            width: 200px;
+        }
+
+        button {
+            padding: 8px 14px;
+            margin: 5px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            margin: 15px auto;
+            width: 350px;
+            border-radius: 15px;
+        }
+
+        .current {
+            font-size: 22px;
+            color: #38bdf8;
+        }
+
+        .total {
+            font-size: 26px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #22c55e;
+        }
+
+        .history {
+            background: #020617;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .session {
+            font-size: 14px;
+            margin: 3px 0;
+        }
+
+        #fullHistory {
+            margin-top: 20px;
+            width: 100vw;
+            display: flex;
+            position: fixed;
+            width: 100vw;
+            padding: 0;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #fullHistory .card {
+            width: 90%;
+            max-width: 500px;
+        }
+
+        #fullHistory h2 {
+            color: #facc15;
+        }
+
+        .session {
+            background: #020617;
+            padding: 8px;
+            border-radius: 6px;
+            margin: 5px 0;
+        }
+
+
+        .historyRow {
+            display: flex;
+            background: linear-gradient(90deg, rgb(0, 0, 124), black);
+            justify-content: space-around;
+            border-radius: 20px;
+            padding: 10px;
+            width: 90%;
+            min-height: 50vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🚀 Ultimate Daily Tracker</h1>
+
+    <input id="taskName" placeholder="Enter task">
+    <button onclick="addTask()">Add</button>
+    <button onclick="toggleFullHistory()">📅 Full History</button>
+    <div id="fullHistory"></div>
+
+    <div id="tasks"></div>
+
+    <script>
+        let today = new Date().toLocaleDateString();
+        let allData = JSON.parse(localStorage.getItem("ultimateTracker")) || {};
+        let historyVisible = false;
+
+        if (!allData[today]) {
+            allData[today] = {
+                tasks: []
+            };
+        }
+
+        if (!allData[today]) {
+            allData[today] = {
+                date: today,
+                tasks: []
+            };
+        }
+
+        // 👉 direct reference (no overwrite bug)
+        let data = allData[today];
+
+        if (!data.tasks || data.tasks.length === 0) {
+            data.tasks = [
+                {
+                    name: "💻 Coding",
+                    total: 0,
+                    start: null,
+                    running: false,
+                    sessions: [],
+                    showHistory: false
+                }
+            ];
+        }
+
+        save();
+        function save() {
+            allData[today] = data;
+            localStorage.setItem("ultimateTracker", JSON.stringify(allData));
+        }
+
+        function format(ms) {
+            let sec = Math.floor(ms / 1000);
+            let h = Math.floor(sec / 3600);
+            let m = Math.floor((sec % 3600) / 60);
+            let s = sec % 60;
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        function timeStr(ts) {
+            return new Date(ts).toLocaleTimeString();
+        }
+
+        function addTask() {
+            let name = document.getElementById("taskName").value;
+            if (!name) return;
+
+            data.tasks.push({
+                name,
+                total: 0,
+                start: null,
+                running: false,
+                sessions: [],
+                showHistory: false
+            });
+
+            document.getElementById("taskName").value = "";
+            save();
+            render();
+        }
+
+        function deleteTask(i) {
+            let t = data.tasks[i];
+
+            if (t.name === "💻 Coding") {
+                alert("Cannot delete");
+                return;
+            }
+
+            if (t.running) {
+                let end = Date.now();
+                let adjusted = (end - t.start) - 60000;
+
+                if (adjusted > 0) {
+                    t.total += adjusted;
+                }
+            }
+
+            data.tasks.splice(i, 1);
+            save();
+            render();
+        }
+
+        function toggle(i) {
+            let t = data.tasks[i];
+
+            // 🔥 ensure ek time pe ek hi task chale
+            data.tasks.forEach((task, idx) => {
+                if (task.running && idx !== i) {
+                    let end = Date.now();
+                    let adjusted = (end - task.start) - 60000;
+
+                    if (adjusted > 0) {
+                        task.total += adjusted;
+
+                        task.sessions.push({
+                            start: task.start + 30000,
+                            end: end - 30000,
+                            duration: adjusted
+                        });
+                    }
+
+                    task.running = false;
+                }
+            });
+
+            if (!t.running) {
+                t.running = true;
+                t.start = Date.now();
+            } else {
+                let end = Date.now();
+                let adjusted = (end - t.start) - 60000;
+
+                t.running = false;
+
+                if (adjusted > 0) {
+                    t.total += adjusted;
+
+                    t.sessions.push({
+                        start: t.start + 30000,
+                        end: end - 30000,
+                        duration: adjusted
+                    });
+                }
+            }
+
+            save();
+            render();
+        }
+
+        function toggleHistory(i) {
+            data.tasks[i].showHistory = !data.tasks[i].showHistory;
+            render();
+        }
+
+        function render() {
+            let box = document.getElementById("tasks");
+            box.innerHTML = "";
+
+            data.tasks.forEach((t, i) => {
+
+                let current = 0;
+
+                if (t.running) {
+                    let raw = Date.now() - t.start;
+                    current = raw > 60000 ? raw - 60000 : 0; // 🔥 adjusted live
+                }
+
+                let historyHTML = "";
+
+                t.sessions.forEach(s => {
+                    historyHTML += `
+        <div class="session">
+          ${timeStr(s.start)} → ${timeStr(s.end)}
+          <br>
+          <small>${format(s.duration)}</small>
+        </div>
+      `;
+                });
+
+                box.innerHTML += `
+      <div class="card">
+        <h3>${t.name}</h3>
+
+        <div class="current">
+          ${t.running ? format(current) : "Not Running"}
+        </div>
+
+        <button onclick="toggle(${i})">
+          ${t.running ? "Stop" : "Start"}
+        </button>
+
+        <button onclick="toggleHistory(${i})">
+          ${t.showHistory ? "Hide History" : "Show History"}
+        </button>
+
+        <button onclick="deleteTask(${i})">
+          Delete
+        </button>
+
+        ${t.showHistory ? `
+        <div class="history">
+          ${historyHTML || "No sessions"}
+          <div class="total">
+            Total: ${format(t.total)}
+          </div>
+        </div>` : ""}
+      </div>
+    `;
+            });
+        }
+
+        function toggleFullHistory() {
+            let box = document.getElementById("fullHistory");
+
+            historyVisible = !historyVisible;
+
+            if (!historyVisible) {
+                box.innerHTML = "";
+                return;
+            }
+
+            showFullHistory();
+        }
+
+        function showFullHistory() {
+            let box = document.getElementById("fullHistory");
+            box.innerHTML = "";
+
+            let sortedDates = Object.keys(allData).sort((a, b) => new Date(b) - new Date(a));
+
+            sortedDates.forEach(date => {
+                let dayData = allData[date];
+                if (!dayData.tasks) return;
+
+                // 👉 total time of that day
+                let totalDayTime = 0;
+                dayData.tasks.forEach(t => {
+                    totalDayTime += t.total || 0;
+                });
+
+                let d = new Date(date);
+                let dayName = d.toLocaleDateString(undefined, { weekday: 'long' });
+
+                let row = `
+      <div class="historyRow" onclick="toggleDayDetails('${date}')">
+        <div>
+          <span class="date">${date}</span>
+          <span class="day">${dayName}</span>
+        </div>
+        <span class="dayTotal">${format(totalDayTime)}</span>
+      </div>
+
+      <div id="detail-${date}" class="dayDetails"></div>
+    `;
+    
+                box.innerHTML += row;
+            });
+        }
+
+        setInterval(render, 1000);
+        render();
+    </script>
+
+</body>
+
+</html>
